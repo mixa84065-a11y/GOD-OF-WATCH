@@ -5,6 +5,8 @@ import androidx.activity.ComponentActivity
 import androidx.activity.compose.setContent
 import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.*
+import androidx.compose.foundation.rememberScrollState
+import androidx.compose.foundation.verticalScroll
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.Bluetooth
@@ -52,7 +54,7 @@ fun GodOfWatchApp() {
                 }
             }
         }) { padding ->
-            Column(Modifier.fillMaxSize().padding(padding).padding(20.dp)) {
+            Column(Modifier.fillMaxSize().verticalScroll(rememberScrollState()).padding(padding).padding(20.dp)) {
                 Text("GOD OF WATCH", color = Gold, fontSize = 24.sp, fontWeight = FontWeight.Black)
                 Text("ТВОИ ЧАСЫ. ТВОЙ СТИЛЬ.", color = Muted, fontSize = 11.sp, letterSpacing = 2.sp)
                 Spacer(Modifier.height(24.dp))
