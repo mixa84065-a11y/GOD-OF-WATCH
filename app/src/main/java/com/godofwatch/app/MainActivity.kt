@@ -20,11 +20,94 @@ import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
+import kotlinx.coroutines.delay
+import kotlinx.coroutines.withContext
+import kotlinx.coroutines.Dispatchers
 
 private val Night = Color(0xFF101014)
 private val Panel = Color(0xFF1B1B22)
 private val Gold = Color(0xFFD6AD55)
 private val Muted = Color(0xFF9A9AA5)
+
+private data class Quote(val pair: String, val value: String)
+
+private fun loadQuotes(): List<Quote> {
+    fun getJson(address: String): org.json.JSONObject {
+        val connection = java.net.URL(address).openConnection() as java.net.HttpURLConnection
+        connection.connectTimeout = 10000
+        connection.readTimeout = 10000
+        connection.setRequestProperty("User-Agent", "GODOFWATCH/1.0")
+        return try {
+            org.json.JSONObject(connection.inputStream.bufferedReader().use { it.readText() })
+        } finally {
+            connection.disconnect()
+        }
+    }
+
+    val rates = getJson("https://open.er-api.com/v6/latest/USD").getJSONObject("rates")
+    val rub = rates.getDouble("RUB")
+    val eur = rates.getDouble("EUR")
+    val gbp = rates.getDouble("GBP")
+    val btcJson = getJson("https://api.coingecko.com/api/v3/simple/price?ids=bitcoin&vs_currencies=usd")
+    val btc = btcJson.getJSONObject("bitcoin").getDouble("usd")
+    return listOf(
+        Quote("USD/RUB", "%.2f".format(java.util.Locale.US, rub)),
+        Quote("EUR/RUB", "%.2f".format(java.util.Locale.US, rub / eur)),
+        Quote("GBP/RUB", "%.2f".format(java.util.Locale.US, rub / gbp)),
+        Quote("BTC/USD", "%,.0f".format(java.util.Locale.US, btc)),
+        Quote("USD/EUR", "%.4f".format(java.util.Locale.US, eur)),
+        Quote("EUR/USD", "%.4f".format(java.util.Locale.US, 1.0 / eur))
+    )
+}
+
+@Composable
+fun CurrencyRatesPanel() {
+    var quotes by remember { mutableStateOf<List<Quote>>(emptyList()) }
+    var updatedAt by remember { mutableStateOf("Загрузка котировок…") }
+    var error by remember { mutableStateOf(false) }
+
+    LaunchedEffect(Unit) {
+        while (true) {
+            try {
+                val fresh = kotlinx.coroutines.withContext(kotlinx.coroutines.Dispatchers.IO) { loadQuotes() }
+                quotes = fresh
+                updatedAt = "Обновлено: " + java.text.SimpleDateFormat("HH:mm:ss", java.util.Locale.getDefault()).format(java.util.Date())
+                error = false
+            } catch (_: Exception) {
+                if (quotes.isEmpty()) updatedAt = "Нет связи с источником котировок"
+                error = true
+            }
+            kotlinx.coroutines.delay(5 * 60 * 1000L)
+        }
+    }
+
+    Card(colors = CardDefaults.cardColors(containerColor = Panel), shape = RoundedCornerShape(20.dp)) {
+        Column(Modifier.fillMaxWidth().padding(16.dp), verticalArrangement = Arrangement.spacedBy(10.dp)) {
+            Row(verticalAlignment = Alignment.CenterVertically) {
+                Text("КОТИРОВКИ", color = Gold, fontWeight = FontWeight.Bold, fontSize = 13.sp)
+                Spacer(Modifier.weight(1f))
+                Text("каждые 5 мин", color = Muted, fontSize = 10.sp)
+            }
+            if (quotes.isEmpty()) {
+                Text(updatedAt, color = if (error) Color(0xFFFF7777) else Muted, fontSize = 12.sp)
+            } else {
+                quotes.chunked(2).forEach { row ->
+                    Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+                        row.forEach { quote ->
+                            Column(Modifier.weight(1f).background(Night, RoundedCornerShape(12.dp)).padding(10.dp)) {
+                                Text(quote.pair, color = Muted, fontSize = 10.sp)
+                                Text(quote.value, color = Gold, fontSize = 16.sp, fontWeight = FontWeight.Bold)
+                            }
+                        }
+                        if (row.size == 1) Spacer(Modifier.weight(1f))
+                    }
+                }
+                Text(if (error) "$updatedAt • ошибка обновления" else updatedAt, color = if (error) Color(0xFFFF7777) else Muted, fontSize = 10.sp)
+            }
+            Text("Котировки загружаются из открытых интернет-источников. Это справочные значения, не цены брокера.", color = Muted, fontSize = 10.sp)
+        }
+    }
+}
 
 class MainActivity : ComponentActivity() {
     override fun onCreate(savedInstanceState: Bundle?) {
