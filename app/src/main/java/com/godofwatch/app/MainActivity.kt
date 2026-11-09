@@ -20,94 +20,11 @@ import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
-import kotlinx.coroutines.delay
-import kotlinx.coroutines.withContext
-import kotlinx.coroutines.Dispatchers
 
 private val Night = Color(0xFF101014)
 private val Panel = Color(0xFF1B1B22)
 private val Gold = Color(0xFFD6AD55)
 private val Muted = Color(0xFF9A9AA5)
-
-private data class Quote(val pair: String, val value: String)
-
-private fun loadQuotes(): List<Quote> {
-    fun getJson(address: String): org.json.JSONObject {
-        val connection = java.net.URL(address).openConnection() as java.net.HttpURLConnection
-        connection.connectTimeout = 10000
-        connection.readTimeout = 10000
-        connection.setRequestProperty("User-Agent", "GODOFWATCH/1.0")
-        return try {
-            org.json.JSONObject(connection.inputStream.bufferedReader().use { it.readText() })
-        } finally {
-            connection.disconnect()
-        }
-    }
-
-    val rates = getJson("https://open.er-api.com/v6/latest/USD").getJSONObject("rates")
-    val rub = rates.getDouble("RUB")
-    val eur = rates.getDouble("EUR")
-    val gbp = rates.getDouble("GBP")
-    val btcJson = getJson("https://api.coingecko.com/api/v3/simple/price?ids=bitcoin&vs_currencies=usd")
-    val btc = btcJson.getJSONObject("bitcoin").getDouble("usd")
-    return listOf(
-        Quote("USD/RUB", "%.2f".format(java.util.Locale.US, rub)),
-        Quote("EUR/RUB", "%.2f".format(java.util.Locale.US, rub / eur)),
-        Quote("GBP/RUB", "%.2f".format(java.util.Locale.US, rub / gbp)),
-        Quote("BTC/USD", "%,.0f".format(java.util.Locale.US, btc)),
-        Quote("USD/EUR", "%.4f".format(java.util.Locale.US, eur)),
-        Quote("EUR/USD", "%.4f".format(java.util.Locale.US, 1.0 / eur))
-    )
-}
-
-@Composable
-fun CurrencyRatesPanel() {
-    var quotes by remember { mutableStateOf<List<Quote>>(emptyList()) }
-    var updatedAt by remember { mutableStateOf("Загрузка котировок…") }
-    var error by remember { mutableStateOf(false) }
-
-    LaunchedEffect(Unit) {
-        while (true) {
-            try {
-                val fresh = kotlinx.coroutines.withContext(kotlinx.coroutines.Dispatchers.IO) { loadQuotes() }
-                quotes = fresh
-                updatedAt = "Обновлено: " + java.text.SimpleDateFormat("HH:mm:ss", java.util.Locale.getDefault()).format(java.util.Date())
-                error = false
-            } catch (_: Exception) {
-                if (quotes.isEmpty()) updatedAt = "Нет связи с источником котировок"
-                error = true
-            }
-            kotlinx.coroutines.delay(5 * 60 * 1000L)
-        }
-    }
-
-    Card(colors = CardDefaults.cardColors(containerColor = Panel), shape = RoundedCornerShape(20.dp)) {
-        Column(Modifier.fillMaxWidth().padding(16.dp), verticalArrangement = Arrangement.spacedBy(10.dp)) {
-            Row(verticalAlignment = Alignment.CenterVertically) {
-                Text("КОТИРОВКИ", color = Gold, fontWeight = FontWeight.Bold, fontSize = 13.sp)
-                Spacer(Modifier.weight(1f))
-                Text("каждые 5 мин", color = Muted, fontSize = 10.sp)
-            }
-            if (quotes.isEmpty()) {
-                Text(updatedAt, color = if (error) Color(0xFFFF7777) else Muted, fontSize = 12.sp)
-            } else {
-                quotes.chunked(2).forEach { row ->
-                    Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(8.dp)) {
-                        row.forEach { quote ->
-                            Column(Modifier.weight(1f).background(Night, RoundedCornerShape(12.dp)).padding(10.dp)) {
-                                Text(quote.pair, color = Muted, fontSize = 10.sp)
-                                Text(quote.value, color = Gold, fontSize = 16.sp, fontWeight = FontWeight.Bold)
-                            }
-                        }
-                        if (row.size == 1) Spacer(Modifier.weight(1f))
-                    }
-                }
-                Text(if (error) "$updatedAt • ошибка обновления" else updatedAt, color = if (error) Color(0xFFFF7777) else Muted, fontSize = 10.sp)
-            }
-            Text("Котировки загружаются из открытых интернет-источников. Это справочные значения, не цены брокера.", color = Muted, fontSize = 10.sp)
-        }
-    }
-}
 
 class MainActivity : ComponentActivity() {
     override fun onCreate(savedInstanceState: Bundle?) {
@@ -179,27 +96,43 @@ fun WatchScreen() {
 
 @Composable
 fun FacesScreen() {
-    Text("ГАЛЕРЕЯ", color = Gold, fontWeight = FontWeight.Bold, fontSize = 12.sp)
+    Text("ГАЛЕРЕЯ • ФОРМАТ AMAZFIT GTS 2", color = Gold, fontWeight = FontWeight.Bold, fontSize = 12.sp)
+    Text("Макетная область каждого циферблата учитывает пропорции экрана 348 × 442 px.", color = Muted, fontSize = 11.sp)
     Spacer(Modifier.height(12.dp))
-    listOf("GOLD ELITE", "DARK DIGITAL", "MINIMAL", "TRADING LION", "MARKET NIGHT", "GOD OF TRADING").forEachIndexed { index, title ->
+    data class FaceStyle(val title: String, val subtitle: String, val accent: Color, val symbol: String, val time: String)
+    val faces = listOf(
+        FaceStyle("GOLD ELITE", "Чёрный фон • золотые акценты", Color(0xFFD6AD55), "♛", "10:08"),
+        FaceStyle("DARK DIGITAL", "Крупные цифровые часы", Color(0xFFB7C4D8), "◷", "21:45"),
+        FaceStyle("MINIMAL", "Чистый минимализм", Color(0xFFE6E6E6), "◌", "09:30"),
+        FaceStyle("TRADING LION", "Золотой лев • рыночная тема", Color(0xFFE2B34F), "♌", "22:47"),
+        FaceStyle("MARKET NIGHT", "Ночные графики и свечи", Color(0xFF56C7B5), "▥", "08:15"),
+        FaceStyle("GOD OF TRADING", "Фирменный чёрно-золотой стиль", Gold, "G", "12:30"),
+        FaceStyle("ДЕТЕКТИВ СОВА", "Подозрительная Сова с шишкой", Color(0xFFE7B65C), "🦉", "21:47")
+    )
+    faces.forEach { face ->
         Card(Modifier.fillMaxWidth().padding(bottom = 12.dp), colors = CardDefaults.cardColors(containerColor = Panel), shape = RoundedCornerShape(20.dp)) {
-            Row(Modifier.padding(16.dp), verticalAlignment = Alignment.CenterVertically) {
-                Box(Modifier.size(76.dp, 92.dp).background(Color(0xFF08080B), RoundedCornerShape(18.dp)), contentAlignment = Alignment.Center) {
-                    Column(horizontalAlignment = Alignment.CenterHorizontally) {
-                        Text(listOf("10:08", "21:45", "09:30", "22:47", "08:15", "12:30")[index], color = Gold, fontSize = 17.sp, fontWeight = FontWeight.Bold)
-                        Text("78%  •  8.6K", color = Color.White, fontSize = 8.sp)
-                        Text("♥ 72", color = Gold, fontSize = 9.sp)
-                    }
+            Row(Modifier.fillMaxWidth().padding(12.dp), verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(14.dp)) {
+                Column(
+                    Modifier.width(142.dp).height(180.dp).background(Color(0xFF08080B), RoundedCornerShape(22.dp)).padding(10.dp),
+                    horizontalAlignment = Alignment.CenterHorizontally,
+                    verticalArrangement = Arrangement.SpaceBetween
+                ) {
+                    Text(face.symbol, color = face.accent, fontSize = 25.sp, fontWeight = FontWeight.Bold)
+                    Text(face.time, color = face.accent, fontSize = 25.sp, fontWeight = FontWeight.Black)
+                    Text("ПТ • 07.11", color = Color.White, fontSize = 8.sp)
+                    Text("🔋 78%   👟 8.6K", color = face.accent, fontSize = 9.sp, fontWeight = FontWeight.Bold)
+                    Text("♥ 72 bpm", color = Color.White, fontSize = 9.sp)
                 }
-                Spacer(Modifier.width(16.dp))
-                Column(Modifier.weight(1f)) {
-                    Text(title, color = Color.White, fontWeight = FontWeight.Bold)
-                    Text("Концепт циферблата", color = Muted, fontSize = 12.sp)
-                    Text("Предпросмотр", color = Gold, fontSize = 12.sp)
+                Column(Modifier.weight(1f), verticalArrangement = Arrangement.spacedBy(6.dp)) {
+                    Text(face.title, color = Color.White, fontWeight = FontWeight.Bold, fontSize = 13.sp)
+                    Text(face.subtitle, color = Muted, fontSize = 11.sp)
+                    Text("348 × 442 px • GTS 2", color = face.accent, fontSize = 10.sp)
+                    Text("Предпросмотр макета", color = Muted, fontSize = 10.sp)
                 }
             }
         }
     }
+    Text("Это адаптированные по пропорциям экранные макеты. Установка на часы появится после проверки и реализации совместимого формата GTS 2.", color = Muted, fontSize = 11.sp)
 }
 
 @Composable
