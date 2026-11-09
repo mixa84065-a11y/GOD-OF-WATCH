@@ -102,7 +102,7 @@ fun CurrencyRatesPanel() {
     LaunchedEffect(Unit) {
         while (isActive) {
             refresh()
-            delay(5 * 60 * 1000L)
+            delay(15 * 60 * 1000L)
         }
     }
 
@@ -114,7 +114,7 @@ fun CurrencyRatesPanel() {
             Row(verticalAlignment = Alignment.CenterVertically) {
                 Column(Modifier.weight(1f)) {
                     Text("РЫНОК • КОТИРОВКИ", color = Color(0xFFD6AD55), fontWeight = FontWeight.Bold, fontSize = 12.sp)
-                    Text("Автообновление каждые 5 минут", color = Color(0xFF9A9AA5), fontSize = 11.sp)
+                    Text("Автообновление каждые 15 минут", color = Color(0xFF9A9AA5), fontSize = 11.sp)
                 }
             }
             Spacer(Modifier.height(10.dp))
