@@ -66,12 +66,17 @@ private fun fetchQuotes(): QuoteSnapshot {
         Quote("EUR/USD", 1.0 / usdEur, fxTime, "Расчётный обратный курс")
     )
     // Crypto is independent: a CoinGecko outage must not hide working FX rates.
-    runCatching {
+    val btc = runCatching {
         val crypto = requestJson("https://api.coingecko.com/api/v3/simple/price?ids=bitcoin&vs_currencies=usd")
-        val btcUsd = crypto.optJSONObject("bitcoin")?.optDouble("usd")?.takeIf { it > 0.0 }
-            ?: error("Нет котировки BTC/USD")
-        quotes.add(Quote("BTC/USD", btcUsd, "обновлено сейчас", "CoinGecko"))
-    }
+        crypto.optJSONObject("bitcoin")?.optDouble("usd")?.takeIf { it > 0.0 }
+            ?: error("CoinGecko не вернул BTC/USD")
+    }.recoverCatching {
+        val coinbase = requestJson("https://api.coinbase.com/v2/exchange-rates?currency=USD")
+        val btcPerUsd = coinbase.optJSONObject("data")?.optJSONObject("rates")?.optDouble("BTC")
+            ?.takeIf { it > 0.0 } ?: error("Coinbase не вернул BTC/USD")
+        1.0 / btcPerUsd
+    }.getOrNull()
+    if (btc != null) quotes.add(Quote("BTC/USD", btc, "обновлено сейчас", "CoinGecko / Coinbase"))
     return QuoteSnapshot(quotes, System.currentTimeMillis())
 }
 
@@ -115,7 +120,7 @@ fun CurrencyRatesPanel() {
             Row(verticalAlignment = Alignment.CenterVertically) {
                 Column(Modifier.weight(1f)) {
                     Text("РЫНОК • КОТИРОВКИ", color = Color(0xFFD6AD55), fontWeight = FontWeight.Bold, fontSize = 12.sp)
-                    Text("Автообновление каждые 5 минут", color = Color(0xFF9A9AA5), fontSize = 11.sp)
+                    Text("Проверка каждые 5 минут • частота данных зависит от источника", color = Color(0xFF9A9AA5), fontSize = 11.sp)
                 }
             }
             Spacer(Modifier.height(10.dp))
@@ -137,7 +142,7 @@ fun CurrencyRatesPanel() {
             snapshot?.let {
                 Text("Получено приложением: " + SimpleDateFormat("HH:mm:ss", Locale.getDefault()).format(Date(it.fetchedAt)),
                     color = Color(0xFF9A9AA5), fontSize = 10.sp)
-                Text("FX: справочные/индикативные данные с задержкой до 15 минут на бесплатном доступе. Не для сделок.",
+                Text("FX: справочные курсы обновляются по расписанию провайдера (обычно ежедневно), не являются live-котировками. Источник: Rates By Exchange Rate API. Не для сделок.",
                     color = Color(0xFF9A9AA5), fontSize = 10.sp)
             }
             if (snapshot == null && errorText != null) {
