@@ -1,6 +1,10 @@
 package com.godofwatch.app
 
 import android.os.Bundle
+import android.content.Intent
+import android.provider.Settings
+import androidx.activity.compose.rememberLauncherForActivityResult
+import androidx.activity.result.contract.ActivityResultContracts
 import androidx.activity.ComponentActivity
 import androidx.activity.compose.setContent
 import androidx.compose.foundation.Canvas
@@ -44,6 +48,13 @@ class MainActivity : ComponentActivity() {
 
 @Composable
 fun GodOfWatchApp() {
+    val context = androidx.compose.ui.platform.LocalContext.current
+    val openWatchPairing = {
+        // GTS 2 pairing is managed by Zepp; open it when installed.
+        val zeppIntent = context.packageManager.getLaunchIntentForPackage("com.huami.watch.hmwatchmanager")
+        if (zeppIntent != null) context.startActivity(zeppIntent)
+        else context.startActivity(Intent(Settings.ACTION_BLUETOOTH_SETTINGS))
+    }
     var selectedTab by remember { mutableStateOf("Главная") }
     var showPulse by remember { mutableStateOf(false) }
     var showEditor by remember { mutableStateOf(false) }
@@ -86,7 +97,7 @@ fun GodOfWatchApp() {
                 Spacer(Modifier.height(18.dp))
                 when {
                     selectedTab == "Главная" && showPulse -> PulseDetails(onBack = { showPulse = false })
-                    selectedTab == "Главная" -> WatchScreen(onPulseClick = { showPulse = true })
+                    selectedTab == "Главная" -> WatchScreen(onPulseClick = { showPulse = true }, onConnectClick = openWatchPairing)
                     selectedTab == "Циферблаты" && showEditor -> EditorScreen()
                     selectedTab == "Циферблаты" -> FacesScreen(onOpenEditor = { showEditor = true })
                     else -> WatchSettingsScreen()
@@ -97,7 +108,7 @@ fun GodOfWatchApp() {
 }
 
 @Composable
-fun WatchScreen(onPulseClick: () -> Unit) {
+fun WatchScreen(onPulseClick: () -> Unit, onConnectClick: () -> Unit) {
     Column(verticalArrangement = Arrangement.spacedBy(14.dp)) {
         // Watch preview: this is a visual preview, not a claim that the watch is connected.
         Card(colors = CardDefaults.cardColors(containerColor = Panel), shape = RoundedCornerShape(24.dp)) {
@@ -136,12 +147,12 @@ fun WatchScreen(onPulseClick: () -> Unit) {
                 Text("Предпросмотр текущего дизайна", color = Muted, fontSize = 11.sp)
                 Spacer(Modifier.height(8.dp))
                 OutlinedButton(
-                    onClick = {},
+                    onClick = onConnectClick,
                     colors = ButtonDefaults.outlinedButtonColors(contentColor = Gold)
                 ) {
                     Icon(Icons.Default.Bluetooth, contentDescription = null)
                     Spacer(Modifier.width(8.dp))
-                    Text("Подключить часы")
+                    Text("Открыть Zepp / Bluetooth")
                 }
             }
         }
