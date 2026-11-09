@@ -34,44 +34,45 @@ private fun requestJson(url: String): JSONObject {
     return try {
         val code = connection.responseCode
         val stream = if (code in 200..299) connection.inputStream else connection.errorStream
-        val body = stream.bufferedReader().use { it.readText() }
+        val body = stream?.bufferedReader()?.use { it.readText() }.orEmpty()
         if (code !in 200..299) error("HTTP $code: $body")
-        JSONObject(body)
+        JSONObject(body).also { json ->
+            if (json.optString("result") == "error") error(json.optString("message", "Ошибка источника"))
+        }
     } finally {
         connection.disconnect()
     }
 }
 
 private fun fetchQuotes(): QuoteSnapshot {
-    val usd = requestJson("https://api.exchangerate.dev/v1/latest/USD?symbols=RUB,EUR")
-    val eur = requestJson("https://api.exchangerate.dev/v1/latest/EUR?symbols=RUB,USD")
-    val gbp = requestJson("https://api.exchangerate.dev/v1/latest/GBP?symbols=RUB")
-    val crypto = requestJson("https://api.coingecko.com/api/v3/simple/price?ids=bitcoin&vs_currencies=usd")
+    // Open ER-API is a no-key source; fetch one USD basket and one GBP basket.
+    val usd = requestJson("https://open.er-api.com/v6/latest/USD")
+    val gbp = requestJson("https://open.er-api.com/v6/latest/GBP")
     fun rate(json: JSONObject, symbol: String): Double {
         val rates = json.optJSONObject("rates") ?: error("Источник не вернул rates")
         return rates.optDouble(symbol).takeIf { it > 0.0 } ?: error("Нет курса $symbol")
     }
     val usdRub = rate(usd, "RUB")
     val usdEur = rate(usd, "EUR")
-    val eurRub = rate(eur, "RUB")
+    val eurRub = usdRub / usdEur
     val gbpRub = rate(gbp, "RUB")
-    val btcUsd = crypto.optJSONObject("bitcoin")?.optDouble("usd")?.takeIf { it > 0.0 }
-        ?: error("Нет котировки BTC/USD")
-    val fxTime = usd.optString("data_updated_at", usd.optString("timestamp", "время источника неизвестно"))
-    val eurTime = eur.optString("data_updated_at", eur.optString("timestamp", fxTime))
-    val gbpTime = gbp.optString("data_updated_at", gbp.optString("timestamp", fxTime))
-    val now = System.currentTimeMillis().toString()
-    return QuoteSnapshot(
-        listOf(
-            Quote("USD/RUB", usdRub, fxTime, "ExchangeRate.dev"),
-            Quote("EUR/RUB", eurRub, eurTime, "ExchangeRate.dev"),
-            Quote("GBP/RUB", gbpRub, gbpTime, "ExchangeRate.dev"),
-            Quote("BTC/USD", btcUsd, now, "CoinGecko"),
-            Quote("USD/EUR", usdEur, fxTime, "ExchangeRate.dev"),
-            Quote("EUR/USD", 1.0 / usdEur, fxTime, "Расчётный обратный курс")
-        ),
-        System.currentTimeMillis()
+    val fxTime = usd.optString("time_last_update_utc", "время источника неизвестно")
+    val gbpTime = gbp.optString("time_last_update_utc", fxTime)
+    val quotes = mutableListOf(
+        Quote("USD/RUB", usdRub, fxTime, "Open ER-API"),
+        Quote("EUR/RUB", eurRub, fxTime, "Расчёт по USD"),
+        Quote("GBP/RUB", gbpRub, gbpTime, "Open ER-API"),
+        Quote("USD/EUR", usdEur, fxTime, "Open ER-API"),
+        Quote("EUR/USD", 1.0 / usdEur, fxTime, "Расчётный обратный курс")
     )
+    // Crypto is independent: a CoinGecko outage must not hide working FX rates.
+    runCatching {
+        val crypto = requestJson("https://api.coingecko.com/api/v3/simple/price?ids=bitcoin&vs_currencies=usd")
+        val btcUsd = crypto.optJSONObject("bitcoin")?.optDouble("usd")?.takeIf { it > 0.0 }
+            ?: error("Нет котировки BTC/USD")
+        quotes.add(Quote("BTC/USD", btcUsd, "обновлено сейчас", "CoinGecko"))
+    }
+    return QuoteSnapshot(quotes, System.currentTimeMillis())
 }
 
 private fun formatRate(value: Double): String =
@@ -102,7 +103,7 @@ fun CurrencyRatesPanel() {
     LaunchedEffect(Unit) {
         while (isActive) {
             refresh()
-            delay(15 * 60 * 1000L)
+            delay(5 * 60 * 1000L)
         }
     }
 
@@ -114,7 +115,7 @@ fun CurrencyRatesPanel() {
             Row(verticalAlignment = Alignment.CenterVertically) {
                 Column(Modifier.weight(1f)) {
                     Text("РЫНОК • КОТИРОВКИ", color = Color(0xFFD6AD55), fontWeight = FontWeight.Bold, fontSize = 12.sp)
-                    Text("Автообновление каждые 15 минут", color = Color(0xFF9A9AA5), fontSize = 11.sp)
+                    Text("Автообновление каждые 5 минут", color = Color(0xFF9A9AA5), fontSize = 11.sp)
                 }
             }
             Spacer(Modifier.height(10.dp))
