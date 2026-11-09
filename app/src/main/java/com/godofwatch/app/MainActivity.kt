@@ -33,7 +33,7 @@ class MainActivity : ComponentActivity() {
 
 @Composable
 fun GodOfWatchApp() {
-    var selectedTab by remember { mutableStateOf("Циферблаты") }
+    var selectedTab by remember { mutableStateOf("Часы") }
     MaterialTheme(colorScheme = darkColorScheme(primary = Gold, background = Night, surface = Panel,
         onPrimary = Color.Black, onBackground = Color.White, onSurface = Color.White)) {
         Scaffold(containerColor = Night, bottomBar = {
@@ -68,40 +68,42 @@ fun GodOfWatchApp() {
 
 @Composable
 fun WatchScreen() {
-    Card(colors = CardDefaults.cardColors(containerColor = Panel), shape = RoundedCornerShape(24.dp)) {
-        Column(Modifier.fillMaxWidth().padding(20.dp), horizontalAlignment = Alignment.CenterHorizontally) {
-            Icon(Icons.Default.Watch, null, tint = Gold, modifier = Modifier.size(54.dp))
-            Spacer(Modifier.height(12.dp))
-            Text("Amazfit GTS 2", fontSize = 21.sp, fontWeight = FontWeight.Bold)
-            Text("Подключение будет доступно после проверки BLE-протокола", color = Muted, fontSize = 12.sp)
-            Spacer(Modifier.height(18.dp))
-            OutlinedButton(onClick = {}, colors = ButtonDefaults.outlinedButtonColors(contentColor = Gold)) {
-                Icon(Icons.Default.Bluetooth, null)
-                Spacer(Modifier.width(8.dp))
-                Text("Подключить часы")
+    Column(verticalArrangement = Arrangement.spacedBy(16.dp)) {
+        Card(colors = CardDefaults.cardColors(containerColor = Panel), shape = RoundedCornerShape(24.dp)) {
+            Column(Modifier.fillMaxWidth().padding(20.dp), horizontalAlignment = Alignment.CenterHorizontally) {
+                Icon(Icons.Default.Watch, null, tint = Gold, modifier = Modifier.size(54.dp))
+                Spacer(Modifier.height(12.dp))
+                Text("Amazfit GTS 2", fontSize = 21.sp, fontWeight = FontWeight.Bold)
+                Text("Подключение будет доступно после проверки протокола часов", color = Muted, fontSize = 12.sp)
+                Spacer(Modifier.height(18.dp))
+                OutlinedButton(onClick = {}, colors = ButtonDefaults.outlinedButtonColors(contentColor = Gold)) {
+                    Icon(Icons.Default.Bluetooth, null)
+                    Spacer(Modifier.width(8.dp))
+                    Text("Подключить часы")
+                }
+                Text("Пока не подключено", color = Muted, fontSize = 12.sp)
             }
-            Text("Пока не подключено", color = Muted, fontSize = 12.sp)
         }
+        CurrencyRatesPanel()
+        Text("ВОЗМОЖНОСТИ", color = Gold, fontWeight = FontWeight.Bold, fontSize = 12.sp)
+        FeatureCard("Галерея циферблатов", "Подборка стилей для GTS 2")
+        FeatureCard("Мой конструктор", "Создавай собственный дизайн")
+        FeatureCard("Передача на часы", "Станет активна после проверки совместимости")
     }
-    Spacer(Modifier.height(18.dp))
-    Text("ВОЗМОЖНОСТИ", color = Gold, fontWeight = FontWeight.Bold, fontSize = 12.sp)
-    Spacer(Modifier.height(10.dp))
-    FeatureCard("Галерея циферблатов", "Подборка стилей для GTS 2")
-    FeatureCard("Мой конструктор", "Создавай собственный дизайн")
-    FeatureCard("Передача на часы", "Станет активна после проверки совместимости")
 }
 
 @Composable
 fun FacesScreen() {
     Text("ГАЛЕРЕЯ", color = Gold, fontWeight = FontWeight.Bold, fontSize = 12.sp)
     Spacer(Modifier.height(12.dp))
-    listOf("GOLD ELITE", "DARK DIGITAL", "MINIMAL").forEachIndexed { index, title ->
+    listOf("GOLD ELITE", "DARK DIGITAL", "MINIMAL", "TRADING LION", "MARKET NIGHT", "GOD OF TRADING").forEachIndexed { index, title ->
         Card(Modifier.fillMaxWidth().padding(bottom = 12.dp), colors = CardDefaults.cardColors(containerColor = Panel), shape = RoundedCornerShape(20.dp)) {
             Row(Modifier.padding(16.dp), verticalAlignment = Alignment.CenterVertically) {
                 Box(Modifier.size(76.dp, 92.dp).background(Color(0xFF08080B), RoundedCornerShape(18.dp)), contentAlignment = Alignment.Center) {
                     Column(horizontalAlignment = Alignment.CenterHorizontally) {
-                        Text(listOf("10:08", "21:45", "09:30")[index], color = Gold, fontSize = 17.sp, fontWeight = FontWeight.Bold)
-                        Text("TUE 10", color = Color.White, fontSize = 9.sp)
+                        Text(listOf("10:08", "21:45", "09:30", "22:47", "08:15", "12:30")[index], color = Gold, fontSize = 17.sp, fontWeight = FontWeight.Bold)
+                        Text("78%  •  8.6K", color = Color.White, fontSize = 8.sp)
+                        Text("♥ 72", color = Gold, fontSize = 9.sp)
                     }
                 }
                 Spacer(Modifier.width(16.dp))
@@ -125,12 +127,15 @@ fun EditorScreen() {
                 Column(horizontalAlignment = Alignment.CenterHorizontally) {
                     Text("10:08", color = Gold, fontSize = 38.sp, fontWeight = FontWeight.Light)
                     Text("TUESDAY 10", color = Color.White, fontSize = 11.sp)
-                    Spacer(Modifier.height(24.dp))
-                    Text("♥  82 bpm", color = Gold, fontSize = 13.sp)
+                    Spacer(Modifier.height(18.dp))
+                    Text("🔋 78%   👟 8.6K", color = Gold, fontSize = 12.sp)
+                    Text("♥ 72 bpm", color = Gold, fontSize = 13.sp)
+                    Spacer(Modifier.height(12.dp))
+                    Text("BTC/USD  •  USD/RUB", color = Color.White, fontSize = 9.sp)
                 }
             }
             Spacer(Modifier.height(14.dp))
-            Text("Редактор будет расширен: фон, цвет, шрифт и виджеты", color = Muted, fontSize = 12.sp)
+            Text("Настройка фона, цвета, шрифта, показателей и валютных пар", color = Muted, fontSize = 12.sp)
         }
     }
 }
