@@ -2,8 +2,6 @@ package com.godofwatch.app
 
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.shape.RoundedCornerShape
-import androidx.compose.material.icons.Icons
-import androidx.compose.material.icons.filled.Refresh
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
@@ -117,9 +115,6 @@ fun CurrencyRatesPanel() {
                 Column(Modifier.weight(1f)) {
                     Text("РЫНОК • КОТИРОВКИ", color = Color(0xFFD6AD55), fontWeight = FontWeight.Bold, fontSize = 12.sp)
                     Text("Автообновление каждые 5 минут", color = Color(0xFF9A9AA5), fontSize = 11.sp)
-                }
-                IconButton(onClick = { /* periodic refresh will run; manual refresh is handled below */ }, enabled = !loading) {
-                    Icon(Icons.Default.Refresh, contentDescription = "Обновление", tint = Color(0xFFD6AD55))
                 }
             }
             Spacer(Modifier.height(10.dp))
