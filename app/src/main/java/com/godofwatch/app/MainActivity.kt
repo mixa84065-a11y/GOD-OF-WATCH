@@ -3,6 +3,7 @@ package com.godofwatch.app
 import android.os.Bundle
 import android.content.Intent
 import android.provider.Settings
+import android.widget.Toast
 import androidx.activity.compose.rememberLauncherForActivityResult
 import androidx.activity.result.contract.ActivityResultContracts
 import androidx.activity.ComponentActivity
@@ -276,48 +277,97 @@ private fun WatchSettingsScreen() {
 
 @Composable
 fun FacesScreen(onOpenEditor: () -> Unit) {
-    Text("ГАЛЕРЕЯ • AMAZFIT GTS 2", color = Gold, fontWeight = FontWeight.Bold, fontSize = 12.sp)
-    Text("Предпросмотры адаптированы под пропорции экрана 348 × 442 px.", color = Muted, fontSize = 11.sp)
-    Spacer(Modifier.height(12.dp))
-    data class FaceStyle(val title: String, val subtitle: String, val accent: Color, val symbol: String, val time: String)
-    val faces = listOf(
-        FaceStyle("GOLD ELITE", "Чёрный фон • золотые акценты", Gold, "♛", "10:08"),
-        FaceStyle("DARK DIGITAL", "Крупные цифровые часы", Color(0xFFB7C4D8), "◷", "21:45"),
-        FaceStyle("MINIMAL", "Чистый минимализм", Color(0xFFE6E6E6), "◌", "09:30"),
-        FaceStyle("TRADING LION", "Золотой лев • рыночная тема", Color(0xFFE2B34F), "♌", "22:47"),
-        FaceStyle("MARKET NIGHT", "Ночные графики и свечи", Color(0xFF56C7B5), "▥", "08:15"),
-        FaceStyle("GOD OF TRADING", "Фирменный чёрно-золотой стиль", Gold, "G", "12:30"),
-        FaceStyle("ДЕТЕКТИВ СОВА", "Подозрительная Сова с шишкой", Color(0xFFE7B65C), "🦉", "21:47")
+    val context = androidx.compose.ui.platform.LocalContext.current
+    data class FaceStyle(
+        val key: String, val title: String, val subtitle: String,
+        val accent: Color, val symbol: String, val time: String
     )
+    val faces = listOf(
+        FaceStyle("gold_elite", "GOLD ELITE", "Чёрный фон • золотые акценты", Gold, "♛", "10:08"),
+        FaceStyle("dark_digital", "DARK DIGITAL", "Цифровой стиль • технологичная сетка", Color(0xFFB7C4D8), "◷", "21:45"),
+        FaceStyle("minimal", "MINIMAL", "Чистый минимализм", Color(0xFFE6E6E6), "◌", "09:30"),
+        FaceStyle("trading_lion", "TRADING LION", "Золотая тема • сила и концентрация", Color(0xFFE2B34F), "♌", "22:47"),
+        FaceStyle("market_night", "MARKET NIGHT", "Ночные графики и свечи", Color(0xFF56C7B5), "▥", "08:15"),
+        FaceStyle("god_of_trading", "GOD OF TRADING", "Фирменный чёрно-золотой стиль", Gold, "G", "12:30"),
+        FaceStyle("detective_owl", "ДЕТЕКТИВ СОВА", "Временный эскиз • ждём твоё фото персонажа", Color(0xFFE7B65C), "🦉", "21:47")
+    )
+    Text("ГАЛЕРЕЯ • AMAZFIT GTS 2", color = Gold, fontWeight = FontWeight.Bold, fontSize = 12.sp)
+    Text("Фоны 348 × 442 px. Сохрани изображение, затем выбери его в Zepp → профиль → Amazfit GTS 2 → Магазин циферблатов → Пользовательские.", color = Muted, fontSize = 11.sp)
+    Spacer(Modifier.height(12.dp))
     faces.forEach { face ->
-        Card(Modifier.fillMaxWidth().padding(bottom = 10.dp), colors = CardDefaults.cardColors(containerColor = Panel), shape = RoundedCornerShape(20.dp)) {
-            Row(Modifier.fillMaxWidth().padding(12.dp), verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(14.dp)) {
+        Card(
+            Modifier.fillMaxWidth().padding(bottom = 10.dp),
+            colors = CardDefaults.cardColors(containerColor = Panel),
+            shape = RoundedCornerShape(20.dp)
+        ) {
+            Row(
+                Modifier.fillMaxWidth().padding(12.dp),
+                verticalAlignment = Alignment.CenterVertically,
+                horizontalArrangement = Arrangement.spacedBy(14.dp)
+            ) {
                 Column(
-                    Modifier.width(124.dp).height(166.dp).background(Color(0xFF08080B), RoundedCornerShape(22.dp)).padding(10.dp),
+                    Modifier.width(124.dp).height(166.dp)
+                        .background(Color(0xFF08080B), RoundedCornerShape(22.dp))
+                        .border(1.dp, face.accent.copy(alpha = .65f), RoundedCornerShape(22.dp))
+                        .padding(10.dp),
                     horizontalAlignment = Alignment.CenterHorizontally,
                     verticalArrangement = Arrangement.SpaceBetween
                 ) {
                     Text(face.symbol, color = face.accent, fontSize = 23.sp, fontWeight = FontWeight.Bold)
                     Text(face.time, color = face.accent, fontSize = 23.sp, fontWeight = FontWeight.Black)
-                    Text("ПТ • 07.11", color = Color.White, fontSize = 8.sp)
-                    Text("🔋 --%   👟 --", color = face.accent, fontSize = 9.sp, fontWeight = FontWeight.Bold)
-                    Text("♥ -- bpm", color = Color.White, fontSize = 9.sp)
+                    Text("GTS 2", color = Color.White, fontSize = 8.sp)
+                    Text("BATTERY  •  STEPS", color = face.accent, fontSize = 8.sp, fontWeight = FontWeight.Bold)
+                    Text("GOD OF WATCH", color = Color.White, fontSize = 8.sp)
                 }
                 Column(Modifier.weight(1f), verticalArrangement = Arrangement.spacedBy(6.dp)) {
                     Text(face.title, color = Color.White, fontWeight = FontWeight.Bold, fontSize = 13.sp)
                     Text(face.subtitle, color = Muted, fontSize = 11.sp)
                     Text("348 × 442 px • GTS 2", color = face.accent, fontSize = 10.sp)
-                    Text("Предпросмотр макета", color = Muted, fontSize = 10.sp)
+                    Button(
+                        onClick = {
+                            val ok = saveWatchFaceBackground(context, face.key, face.title)
+                            Toast.makeText(
+                                context,
+                                if (ok) "Фон сохранён в Pictures/GOD_OF_WATCH" else "Не удалось сохранить фон",
+                                Toast.LENGTH_LONG
+                            ).show()
+                        },
+                        modifier = Modifier.fillMaxWidth(),
+                        contentPadding = PaddingValues(horizontal = 6.dp, vertical = 5.dp),
+                        colors = ButtonDefaults.buttonColors(containerColor = Gold, contentColor = Color.Black)
+                    ) {
+                        Text("Сохранить фон", fontSize = 10.sp)
+                    }
                 }
             }
         }
     }
-    OutlinedButton(onClick = onOpenEditor, modifier = Modifier.fillMaxWidth(), colors = ButtonDefaults.outlinedButtonColors(contentColor = Gold)) {
+    OutlinedButton(
+        onClick = {
+            val zepp = context.packageManager.getLaunchIntentForPackage("com.huami.watch.hmwatchmanager")
+            if (zepp != null) context.startActivity(zepp)
+            else Toast.makeText(context, "Zepp не найден. Установи Zepp и повтори.", Toast.LENGTH_LONG).show()
+        },
+        modifier = Modifier.fillMaxWidth(),
+        colors = ButtonDefaults.outlinedButtonColors(contentColor = Gold)
+    ) {
+        Icon(Icons.Default.Bluetooth, contentDescription = null)
+        Spacer(Modifier.width(8.dp))
+        Text("Открыть Zepp для установки")
+    }
+    OutlinedButton(
+        onClick = onOpenEditor,
+        modifier = Modifier.fillMaxWidth(),
+        colors = ButtonDefaults.outlinedButtonColors(contentColor = Gold)
+    ) {
         Icon(Icons.Default.Palette, contentDescription = null)
         Spacer(Modifier.width(8.dp))
         Text("Открыть конструктор")
     }
-    Text("Установка циферблатов на часы требует отдельной проверки совместимого формата и протокола GTS 2.", color = Muted, fontSize = 11.sp)
+    Text(
+        "Важно: сохраняются PNG-фоны для функции «Пользовательский циферблат» в Zepp, а не готовые прошивочные .bin-файлы. Zepp сам добавляет время и предлагает выбрать расположение элементов. Для точного «Детектива Совы» нужен исходный референс персонажа.",
+        color = Muted, fontSize = 11.sp
+    )
 }
 
 @Composable
