@@ -45,27 +45,24 @@ private fun requestJson(url: String): JSONObject {
 }
 
 private fun fetchQuotes(): QuoteSnapshot {
-    // Open ER-API is a no-key source; fetch one USD basket and one GBP basket.
-    val usd = requestJson("https://open.er-api.com/v6/latest/USD")
-    val gbp = requestJson("https://open.er-api.com/v6/latest/GBP")
-    fun rate(json: JSONObject, symbol: String): Double {
-        val rates = json.optJSONObject("rates") ?: error("Источник не вернул rates")
-        return rates.optDouble(symbol).takeIf { it > 0.0 } ?: error("Нет курса $symbol")
-    }
-    val usdRub = rate(usd, "RUB")
-    val usdEur = rate(usd, "EUR")
-    val eurRub = usdRub / usdEur
-    val gbpRub = rate(gbp, "RUB")
-    val fxTime = usd.optString("time_last_update_utc", "время источника неизвестно")
-    val gbpTime = gbp.optString("time_last_update_utc", fxTime)
+    // One USD basket avoids a separate GBP-base request that can be rejected by some providers.
+    val fx = requestJson("https://api.exchangerate.dev/v1/latest/USD?symbols=RUB,EUR,GBP")
+    val rates = fx.optJSONObject("rates") ?: error("Источник не вернул rates")
+    fun rate(symbol: String): Double =
+        rates.optDouble(symbol).takeIf { it > 0.0 } ?: error("Нет курса $symbol")
+
+    val usdRub = rate("RUB")
+    val usdEur = rate("EUR")
+    val usdGbp = rate("GBP")
+    val fxTime = fx.optString("data_updated_at", fx.optString("timestamp", "время источника неизвестно"))
     val quotes = mutableListOf(
-        Quote("USD/RUB", usdRub, fxTime, "Open ER-API"),
-        Quote("EUR/RUB", eurRub, fxTime, "Расчёт по USD"),
-        Quote("GBP/RUB", gbpRub, gbpTime, "Open ER-API"),
-        Quote("USD/EUR", usdEur, fxTime, "Open ER-API"),
+        Quote("USD/RUB", usdRub, fxTime, "ExchangeRate.dev"),
+        Quote("EUR/RUB", usdRub / usdEur, fxTime, "Расчёт через USD"),
+        Quote("GBP/RUB", usdRub / usdGbp, fxTime, "Расчёт через USD"),
+        Quote("USD/EUR", usdEur, fxTime, "ExchangeRate.dev"),
         Quote("EUR/USD", 1.0 / usdEur, fxTime, "Расчётный обратный курс")
     )
-    // Crypto is independent: a CoinGecko outage must not hide working FX rates.
+    // Crypto is independent: if CoinGecko is unavailable, try Coinbase.
     val btc = runCatching {
         val crypto = requestJson("https://api.coingecko.com/api/v3/simple/price?ids=bitcoin&vs_currencies=usd")
         crypto.optJSONObject("bitcoin")?.optDouble("usd")?.takeIf { it > 0.0 }
@@ -120,7 +117,7 @@ fun CurrencyRatesPanel() {
             Row(verticalAlignment = Alignment.CenterVertically) {
                 Column(Modifier.weight(1f)) {
                     Text("РЫНОК • КОТИРОВКИ", color = Color(0xFFD6AD55), fontWeight = FontWeight.Bold, fontSize = 12.sp)
-                    Text("Проверка каждые 5 минут • частота данных зависит от источника", color = Color(0xFF9A9AA5), fontSize = 11.sp)
+                    Text("Проверка каждые 5 минут • FX-данные могут отставать до 15 минут", color = Color(0xFF9A9AA5), fontSize = 11.sp)
                 }
             }
             Spacer(Modifier.height(10.dp))
@@ -142,7 +139,7 @@ fun CurrencyRatesPanel() {
             snapshot?.let {
                 Text("Получено приложением: " + SimpleDateFormat("HH:mm:ss", Locale.getDefault()).format(Date(it.fetchedAt)),
                     color = Color(0xFF9A9AA5), fontSize = 10.sp)
-                Text("FX: справочные курсы обновляются по расписанию провайдера (обычно ежедневно), не являются live-котировками. Источник: Rates By Exchange Rate API. Не для сделок.",
+                Text("FX: справочные/индикативные курсы, бесплатный поток с задержкой до 15 минут. Источник: ExchangeRate.dev. Не для сделок.",
                     color = Color(0xFF9A9AA5), fontSize = 10.sp)
             }
             if (snapshot == null && errorText != null) {
